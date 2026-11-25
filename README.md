@@ -9,7 +9,7 @@ Turn an old tablet (such as a **Microsoft Surface RT**) or smartphone into a wir
 
 Built with zero external dependencies: the host runs a lightweight PowerShell HTTP server with native Windows `SendInput` scan-code simulation, and the tablet runs a pure ES5 HTML/CSS/JavaScript web interface designed to work smoothly even in legacy browsers like Edge and Internet Explorer 11 *(note: the Windows RT beta itself is untested)*.
 
-![Bus Dashboard Driver's Console](preview.png)
+![Bus Dashboard Driver's Console](assets/preview.png)
 
 ---
 
