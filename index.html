@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Bus Dashboard</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#11181e;color:#eef2ed;font-family:"Segoe UI",Arial,sans-serif}body{padding:28px 36px;-ms-touch-action:manipulation;touch-action:manipulation}button,input,select{font:inherit}button{cursor:pointer;-ms-touch-action:manipulation;touch-action:manipulation}header{border-bottom:1px solid #36414a;padding-bottom:20px;margin-bottom:24px}.brand{color:#e7b85e;letter-spacing:3px;font-size:12px;font-weight:700}h1{font-size:30px;font-weight:600;margin:8px 0}.status{color:#a9b7bc;font-size:15px;min-height:22px}.live{color:#a9d69f}.error{color:#ffb195}.top{float:right;background:transparent;border:1px solid #58646b;color:#dbe2df;padding:10px 20px;border-radius:6px}.section{margin:20px 0 12px;color:#a8b4b8;font-size:12px;letter-spacing:2px;font-weight:600}.doors,.extras{display:-ms-flexbox;display:flex;-ms-flex-wrap:wrap;flex-wrap:wrap;margin:0 -7px}.tile{display:block;position:relative;margin:7px;border:1px solid #52605c;background:#25342f;color:#f1f4ed;border-radius:10px;text-align:left;padding:25px;min-height:182px;width:calc(33.333% - 14px);-ms-flex:0 0 auto;flex:0 0 auto;outline-offset:3px}.tile:active,.tile.flash{background:#4f6849;border-color:#b6d99d}.tile .num{display:block;font-size:12px;letter-spacing:2px;color:#b4c5ae}.tile .label{display:block;font-size:27px;font-weight:600;margin-top:24px}.tile .key{position:absolute;right:18px;top:18px;border:1px solid #637162;border-radius:4px;padding:3px 9px;font-size:13px;color:#c9d1c4}.extra{min-height:110px;background:#202b33;border-color:#3b4953}.extra .label{font-size:20px;margin-top:12px}.extra .num{color:#a6b8c4}.extra:active,.extra.flash{background:#3d5261}.unassigned{opacity:.55}footer{margin-top:25px;color:#8f9ba2;font-size:13px}.edit{background:#1b252d;border:1px solid #3b4953;border-radius:9px;padding:20px;margin-bottom:20px}.edit p{color:#b7c2c7}.row{margin:12px 0;display:-ms-flexbox;display:flex}.row input{width:65%;margin-right:10px}.row select{width:35%}input,select{background:#10191f;border:1px solid #52616b;color:white;padding:10px;border-radius:4px;min-width:0}.save{background:#d5b06c;color:#15201e;border:0;padding:11px 24px;border-radius:5px}.hidden{display:none}@media(max-width:650px){body{padding:18px}.tile{padding:18px;min-height:150px}.tile .label{font-size:20px}.tile .key{right:10px;top:10px}.extra{width:calc(50% - 14px);min-height:100px}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<header><button class="top" id="editButton" type="button">Edit buttons</button><div class="brand">BUS SIMULATOR 18 / CONTROL PANEL</div><h1>Driver's console</h1><div class="status" id="status" role="status">Connecting to your PC...</div></header>
+<div class="edit hidden" id="editor"><strong>Button settings</strong><p>Choose the same keys you use in the game. Settings are saved in this browser.</p><div id="fields"></div><button class="save" id="saveButton" type="button">Save buttons</button></div>
+<div class="section">DOOR CONTROLS</div><div class="doors" id="doors"></div>
+<div class="section">AUXILIARY CONTROLS</div><div class="extras" id="extras"></div>
+<footer>Tap once to send one key press. Door position is not tracked. Keep the game active on your PC.</footer>
+<script>
+(function(){
+'use strict';
+var token='__TOKEN__', storageKey='bus-dashboard-buttons-v1', buttons=[
+{label:'Front door',key:'1'},{label:'Middle door',key:'2'},{label:'Rear door',key:'3'},
+{label:'Parking brake',key:''},{label:'Hazard lights',key:''},{label:'Lights',key:''},
+{label:'Wipers',key:''},{label:'Horn',key:''},{label:'Custom',key:''}];
+var allowed=['','0','1','2','3','4','5','6','7','8','9'],i;
+for(i=65;i<=90;i++){allowed.push(String.fromCharCode(i));}
+for(i=1;i<=12;i++){allowed.push('F'+i);}
+allowed=allowed.concat(['SPACE','ENTER','BACKSPACE','TAB']);
+try{var saved=JSON.parse(localStorage.getItem(storageKey));if(saved&&saved.length===9){for(i=0;i<9;i++){if(typeof saved[i].label==='string'&&allowed.indexOf(saved[i].key)>=0){buttons[i]={label:saved[i].label.substring(0,30),key:saved[i].key};}}}}catch(e){}
+var status=document.getElementById('status'), busy=false, lastTap=0, messageUntil=0;
+function message(text,error){status.innerText=text;status.className='status '+(error?'error':'live');}
+function request(method,path,body,callback){var xhr=new XMLHttpRequest();xhr.open(method,path,true);xhr.timeout=3500;xhr.setRequestHeader('X-Dashboard-Token',token);if(method==='POST'){xhr.setRequestHeader('Content-Type','text/plain');}xhr.onload=function(){var data;try{data=JSON.parse(xhr.responseText);}catch(e){data={error:'Unexpected response. Reopen the address shown on your PC.'};}callback(xhr.status,data);};xhr.onerror=xhr.ontimeout=function(){callback(0,{error:'PC disconnected. Check Wi-Fi and the dashboard window.'});};xhr.send(body||null);}
+function press(index,element){var key=buttons[index].key;if(!key){message('Choose a key for this button in Edit buttons.',true);messageUntil=Date.now()+3000;return;}if(busy||Date.now()-lastTap<180){return;}busy=true;lastTap=Date.now();element.className+=' flash';request('POST','/press',key,function(code,data){busy=false;setTimeout(function(){element.className=element.className.replace(' flash','');},120);messageUntil=Date.now()+2000;if(code===200){message(buttons[index].label+' - sent '+key,false);}else{message(data.error||'Could not send key.',true);}});}
+function render(){document.getElementById('doors').innerHTML='';document.getElementById('extras').innerHTML='';for(var j=0;j<buttons.length;j++){(function(index){var b=buttons[index],el=document.createElement('button');el.type='button';el.className='tile'+(index>=3?' extra':'')+(!b.key?' unassigned':'');var num=document.createElement('span');num.className='num';num.innerText=index<3?'DOOR 0'+(index+1):'AUX 0'+(index-2);var label=document.createElement('span');label.className='label';label.innerText=b.label;var key=document.createElement('span');key.className='key';key.innerText=b.key||'SET KEY';el.appendChild(num);el.appendChild(label);el.appendChild(key);el.setAttribute('aria-label',b.label+(b.key?', key '+b.key:', unassigned'));el.onclick=function(){press(index,el);};document.getElementById(index<3?'doors':'extras').appendChild(el);})(j);}}
+function edit(){var fields=document.getElementById('fields');fields.innerHTML='';for(var j=0;j<buttons.length;j++){var row=document.createElement('div');row.className='row';var input=document.createElement('input');input.id='label'+j;input.value=buttons[j].label;input.maxLength=30;input.setAttribute('aria-label','Button '+(j+1)+' label');var select=document.createElement('select');select.id='key'+j;select.setAttribute('aria-label','Button '+(j+1)+' key');for(var k=0;k<allowed.length;k++){var option=document.createElement('option');option.value=allowed[k];option.innerText=allowed[k]||'Unassigned';select.appendChild(option);}select.value=buttons[j].key;row.appendChild(input);row.appendChild(select);fields.appendChild(row);}document.getElementById('editor').className='edit';}
+document.getElementById('editButton').onclick=function(){var editor=document.getElementById('editor');if(editor.className.indexOf('hidden')>=0){edit();}else{editor.className='edit hidden';}};
+document.getElementById('saveButton').onclick=function(){for(var j=0;j<buttons.length;j++){buttons[j]={label:document.getElementById('label'+j).value||'Button '+(j+1),key:document.getElementById('key'+j).value};}try{localStorage.setItem(storageKey,JSON.stringify(buttons));}catch(e){message('Settings work for this session; browser storage is unavailable.',true);messageUntil=Date.now()+5000;}document.getElementById('editor').className='edit hidden';render();};
+function poll(){request('GET','/status',null,function(code,data){if(Date.now()>messageUntil){if(code!==200){message(data.error||'PC disconnected.',true);}else if(data.testMode){message('TEST MODE - taps are logged on the PC; no keys are sent.',false);}else if(data.gameActive){message('Connected - Bus Simulator 18 is ready.',false);}else{message('Connected - focus Bus Simulator 18 on your PC.',true);}}setTimeout(poll,2500);});}
+render();poll();
+})();
+</script>
+</body>
+</html>
